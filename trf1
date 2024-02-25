@@ -15,12 +15,11 @@ def clean_text(text):
     text = re.sub(r'\W', ' ', text)
     text = text.strip().lower()
     return text
-
 def clean_annotations(annotations):
     cleaned_annotations = {}
     for key, value in annotations.items():
         if isinstance(value, str):
-            cleaned_annotations[key] = value.strip()  # Remove leading and trailing whitespaces
+            cleaned_annotations[key] = clean_text(value)  # Apply text cleaning
         elif isinstance(value, list):
             cleaned_entities = []
             for entity in value:
@@ -31,14 +30,18 @@ def clean_annotations(annotations):
             cleaned_annotations[key] = cleaned_entities
     return cleaned_annotations
 
-df['Email Text'] = df['Email Text'].apply(clean_text)
+# Clean text in all label columns
+label_columns = ['OUTBOUND_SOURCE','OUTBOUND_DESTINATION','INBOUND_SOURCE','INBOUND_DESTINATION','OUTBOUND_TRAVEL_DATE','INBOUND_TRAVEL_DATE','OUTBOUND_TRAVEL_TIME','INBOUND_TRAVEL_TIME','Travel Flight Name','Travel Flight Number','Return Flight Name','Return Flight Number','Cabin class']
+for col in label_columns:
+    print(f"Unique types in column '{col}':", df[col].apply(type).unique())
 
+
+# Prepare training data
 TRAIN_DATA = []
 for index, row in df.iterrows():
     text = row['Email Text']
     entities = []
-    for label in ['OUTBOUND_SOURCE','OUTBOUND_DESTINATION','INBOUND_SOURCE','INBOUND_DESTINATION','OUTBOUND_TRAVEL_DATE','INBOUND_TRAVEL_DATE','OUTBOUND_TRAVEL_TIME','INBOUND_TRAVEL_TIME','Travel Flight Name','Travel Flight Number','Return Flight Name','Return Flight Number','Cabin class'
-]:
+    for label in label_columns:
         start_index = text.find(str(row[label]).lower())
         if start_index != -1:
             end_index = start_index + len(str(row[label]))
