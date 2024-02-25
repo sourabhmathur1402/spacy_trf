@@ -98,7 +98,6 @@ model = Model()
 model.train(output_dir='ab', n_iter=20)  # Adjust the number of iterations and output directory as needed
 
 
-
 import pandas as pd
 import spacy
 import random
@@ -132,8 +131,8 @@ for index, row in df.iterrows():
             # Tokenize the text
             doc = nlp(text)
             # Find token indices corresponding to the entity
-            start_token_idx = len([token for token in doc[:start_index].split() if not token.is_space])
-            end_token_idx = start_token_idx + len([token for token in doc[start_index:end_index].split() if not token.is_space])
+            start_token_idx = sum(1 for token in doc[:start_index] if not token.is_space)
+            end_token_idx = start_token_idx + sum(1 for token in doc[start_index:end_index] if not token.is_space)
             # Append entity with token indices
             entities.append((start_token_idx, end_token_idx, label.upper()))
     
@@ -198,4 +197,3 @@ class Model(object):
 # Creating a Model instance and training it
 model = Model()
 model.train(output_dir='ab', n_iter=20)  # Adjust the number of iterations and output directory as needed
-
