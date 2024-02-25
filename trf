@@ -1,3 +1,6 @@
+!pip install spacy-lookups-data
+!pip install spacy-transformers
+!python -m spacy download en_core_web_trf
 import pandas as pd
 import spacy
 import random
