@@ -48,3 +48,15 @@ with open(output_file, "w") as f:
     json.dump(mismatched_entities, f, indent=4)
 
 print("Mismatched entities saved to:", output_file)
+
+
+output_file = "mismatched_entities.txt"
+with open(output_file, "w") as f:
+    for item in mismatched_entities:
+        f.write("Text: {}\n".format(item["text"]))
+        f.write("Expected Entities: {}\n".format(item["expected_entities"]))
+        f.write("Extracted Entities: {}\n".format(item["extracted_entities"]))
+        f.write("\n")  # Add a newline between each entry
+
+print("Mismatched entities saved to:", output_file)
+
