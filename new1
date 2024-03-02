@@ -1,6 +1,7 @@
 import pandas as pd
 import re
 import json
+import numpy as np
 
 # Load and clean data
 file_path = 'your.xlsx'  # Adjust with the actual path of your CSV file
@@ -17,7 +18,9 @@ for index, row in df.iterrows():
     for label in ['OUTBOUND_SOURCE', 'OUTBOUND_DESTINATION', 'OUTBOUND_TRAVEL_DATE',
                   'INBOUND_TRAVEL_DATE', 'OUTBOUND_TRAVEL_TIME', 'INBOUND_TRAVEL_TIME',
                   'Travel Flight Number', 'Return Flight Name', 'Return Flight Number', 'Cabin class']:
-        if label == 'INBOUND_ORIGIN' or label == 'INBOUND_DESTINATION':
+        if pd.isnull(row[label]):  # Skip NaN values
+            continue
+        if label in ['INBOUND_DESTINATION', 'INBOUND_ORIGIN']:
             continue  # Skip 'Inbound_origin' and 'Inbound_destination'
         start_index = text.find(str(row[label]))
         if start_index != -1:
