@@ -6,3 +6,38 @@ def clean_text(text):
     # Strip leading and trailing whitespaces
     text = text.strip().lower()
     return text
+
+import pandas as pd
+import spacy
+import random
+import re
+from spacy.training import Example
+from spacy.util import minibatch, compounding
+
+# Load and clean data
+file_path = 'your.xlsx'  # Adjust with the actual path of your CSV file
+df = pd.read_excel(file_path)
+
+df['Email Text'] = df['Email Text']
+TRAIN_DATA = []
+for index, row in df.iterrows():
+    text = row['Email Text']
+    entities = []
+    for label in ['OUTBOUND_SOURCE','OUTBOUND_DESTINATION','OUTBOUND_TRAVEL_DATE',
+                'INBOUND_TRAVEL_DATE','OUTBOUND_TRAVEL_TIME','INBOUND_TRAVEL_TIME','Travel Flight Number', 'Return Flight Name',
+       'Return Flight Number', 'Cabin class']:
+        start_index = text.find(str(row[label]))
+        if start_index != -1:
+            end_index = start_index + len(str(row[label]))
+            new_entity = (start_index, end_index, label.upper())
+            if not any(start_idx <= start_index and end_idx >= end_index for start_idx, end_idx, _ in entities):
+                entities.append(new_entity)
+
+    # Additional logic to handle dates with periods (e.g., 08.9.2024)
+    date_match = re.search(r'\b(\d{1,2}\.\d{1,2}\.\d{4})\b', text)
+    if date_match:
+        date_start = date_match.start()
+        date_end = date_match.end()
+        entities.append((date_start, date_end, 'DATE'))
+
+    TRAIN_DATA.append((text, {"entities": entities}))
