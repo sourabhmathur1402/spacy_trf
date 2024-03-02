@@ -1,0 +1,26 @@
+# Function to convert TRAIN_DATA to BERT format
+def convert_to_bert_format(train_data):
+    bert_data = []
+    for text, annotations in train_data:
+        words = text.split()
+        labels = ["O"] * len(words)
+        for start, end, label in annotations.get("entities"):
+            entity_words = text[start:end].split()
+            if len(entity_words) == 1:
+                labels[words.index(entity_words[0])] = "B-" + label
+            else:
+                labels[words.index(entity_words[0])] = "B-" + label
+                labels[words.index(entity_words[1])] = "I-" + label
+                for i in range(2, len(entity_words)):
+                    labels[words.index(entity_words[i])] = "I-" + label
+        for word, label in zip(words, labels):
+            bert_data.append(f"{word} {label}\n")
+        bert_data.append("\n")
+    return bert_data
+
+# Convert TRAIN_DATA to BERT format
+bert_train_data = convert_to_bert_format(TRAIN_DATA)
+
+# Write the BERT format data to a file
+with open("bert_train_data.txt", "w") as f:
+    f.writelines(bert_train_data)
