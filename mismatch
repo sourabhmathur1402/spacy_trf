@@ -1,0 +1,50 @@
+import json
+import pandas as pd
+import re
+
+# Load and clean data
+file_path = 'your.xlsx'  # Adjust with the actual path of your CSV file
+df = pd.read_excel(file_path)
+
+df['Email Text'] = df['Email Text']
+mismatched_entities = []  # List to store mismatched entities
+
+for index, row in df.iterrows():
+    text = row['Email Text']
+    expected_entities = []  # List to store expected entities
+    entities = []
+    for label in ['OUTBOUND_SOURCE', 'OUTBOUND_DESTINATION', 'OUTBOUND_TRAVEL_DATE',
+                  'INBOUND_TRAVEL_DATE', 'OUTBOUND_TRAVEL_TIME', 'INBOUND_TRAVEL_TIME',
+                  'Travel Flight Number', 'Return Flight Name', 'Return Flight Number', 'Cabin class']:
+        start_index = text.find(str(row[label]))
+        if start_index != -1:
+            end_index = start_index + len(str(row[label]))
+            new_entity = (start_index, end_index, label.upper())
+            if not any(start_idx <= start_index and end_idx >= end_index for start_idx, end_idx, _ in entities):
+                entities.append(new_entity)
+            expected_entities.append(new_entity)  # Add expected entity
+
+    # Additional logic to handle dates with periods (e.g., 08.9.2024)
+    date_matches = re.finditer(r'\b(\d{1,2}\.\d{1,2}\.\d{4})\b', text)
+    for match in date_matches:
+        date_start, date_end = match.span()
+        entities.append((date_start, date_end, 'DATE'))
+        expected_entities.append((date_start, date_end, 'DATE'))  # Add expected date entity
+
+    # Additional logic to handle time
+    time_matches = re.finditer(r'\b(\d{1,2}:\d{2})\b', text)
+    for match in time_matches:
+        time_start, time_end = match.span()
+        entities.append((time_start, time_end, 'TIME'))
+        expected_entities.append((time_start, time_end, 'TIME'))  # Add expected time entity
+
+    # Compare extracted entities with expected entities
+    if entities != expected_entities:
+        mismatched_entities.append({"text": text, "expected_entities": expected_entities, "extracted_entities": entities})
+
+# Save mismatched entities to JSON file
+output_file = "mismatched_entities.json"
+with open(output_file, "w") as f:
+    json.dump(mismatched_entities, f, indent=4)
+
+print("Mismatched entities saved to:", output_file)
