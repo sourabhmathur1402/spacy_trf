@@ -1,0 +1,135 @@
+import re
+import spacy
+import random
+import pandas as pd
+from spacy.training import Example, offsets_to_biluo_tags
+from spacy.util import minibatch, compounding
+from seqeval.metrics import f1_score  # Using seqeval for evaluation
+
+# Load and clean data
+file_path = 'code1.csv'  # Adjust with the actual path of your CSV file
+df = pd.read_csv(file_path)
+
+def clean_text(text):
+  # Remove all characters except letters, digits, and specific special characters
+  text = re.sub(r'[^A-Za-z0-9\-,:/ ]', '', text)
+  # Replace consecutive whitespaces with a single space
+  text = re.sub(r'\s+', ' ', text)
+  # Strip leading and trailing whitespaces
+  text = text.strip().lower()
+  return text
+
+df['TEXT'] = df['TEXT'].apply(clean_text)
+
+TRAIN_DATA = []
+for index, row in df.iterrows():
+  text = row['TEXT']
+  entities = []
+  for label in ['OUTBOUND_ORIGIN','OUTBOUND_DESTINATION','OUTBOUND_DEPARTURE_DATE',
+                'INBOUND_DEPARTURE_DATE','OUTBOUND_DEPARTURE_TIME','INBOUND_DEPARTURE_TIME',
+                'PREFERED_FLIGHT_NAME_OUTBOUND','PREFERED_FLIGHT_NUMBER_OUTBOUND',
+                'PREFERED_FLIGHT_NAME_INBOUND','PREFERED_FLIGHT_NUMBER_INBOUND','CABIN_CLASS']:
+    start_index = text.find(str(row[label]).lower())
+    if start_index != -1:
+      end_index = start_index + len(str(row[label]))
+      # Check if the new entity overlaps with existing entities
+      new_entity = (start_index, end_index, label.upper())
+      if not any(start_idx < end_index and end_idx > start_index for start_idx, end_idx, _ in entities):
+        entities.append(new_entity)
+
+  TRAIN_DATA.append((text, {"entities": entities}))
+
+# Model class
+class Model(object):
+
+  def __init__(self, modelName="testmodel"):
+    self.nlp = spacy.blank("en")
+    self.modelName = modelName
+
+  def train(self, output_dir=None, n_iter=80):
+    if "ner" not in self.nlp.pipe_names:
+      ner = self.nlp.add_pipe("ner")
+    else:
+      ner = self.nlp.get_pipe("ner")
+
+    # Adding labels to the NER pipe
+    for _, annotations in TRAIN_DATA:
+      for ent in annotations.get("entities"):
+        ner.add_label(ent[2])
+
+    # Disable existing transformers component
+    if "transformer" in self.nlp.pipe_names:
+      self.nlp.remove_pipe("transformer")
+
+    # Add transformer embeddings
+    trf = self.nlp.add_pipe("transformer", name="trf", last=True)
+    trf.model.initialize()
+
+    # Disabling other pipes for training only NER
+    other_pipes = [pipe for pipe in self.nlp.pipe_names if pipe != "ner" and pipe != "trf"]
+    with self.nlp.disable_pipes(*other_pipes):
+      self.nlp.begin_training()
+
+      for itn in range(n_iter):
+        print("Iteration : {} ".format(itn))
+        random.shuffle(TRAIN_DATA)
+
+        losses = {}
+        batches = minibatch(TRAIN_DATA, size=compounding(4.0, 32.0, 1.001))
+
+        for batch in batches:
+          examples = []
+          for text, annotations in batch:
+            doc = self.nlp.make_doc(text)
+            example = Example.from_dict(doc, annotations)
+            examples.append(example)
+
+          self.nlp.update(
+              examples,
+              losses=losses,
+          )
+        print("Losses", losses)
+
+    if output_dir is not None:
+      self.nlp.to_disk(output_dir)
+      print(f'Model has been trained and saved to {output_dir}')
+# Define Hyperparameter Combinations
+n_iters = [50, 100]
+sizes = [4.0, 5.0, 3.0]  # List of float values
+
+# Implement Hyperparameter Search Loop
+best_models = []
+best_f1_score = 0.0
+
+for n_iter, size in itertools.product(n_iters, sizes):
+  model = Model()
+  output_dir = f"output_model_n_iter_{n_iter}_size_{size}"
+  model.train(output_dir=output_dir, n_iter=n_iter)  # Removed 'drop' argument
+
+  # Load the trained model
+  loaded_model = spacy.load(output_dir)
+
+  # Function to evaluate using seqeval
+  def evaluate(text, true_entities):
+    predicted_entities = [(ent.text, ent.label_) for ent in loaded_model(text).ents]
+    gold_tags, pred_tags = zip(*true_entities), zip(*predicted_entities)
+    return f1_score(gold_tags, pred_tags)
+
+  # Evaluate model on validation data (replace with your actual validation data)
+  f1_score = evaluate(validation_text, validation_annotations)  # Validation data & annotations
+  print(f"F1-score for model {output_dir}: {f1_score}")
+
+  if f1_score > best_f1_score:
+    best_f1_score = f1_score
+    best_model_path = output_dir
+    best_models.clear()
+    best_models.append(best_model_path)
+  else:
+    best_models.append(output_dir)
+
+# Print results
+print(f"Best model path: {best_model_path}")
+print("Other models with the same F1 score:")
+for model_path in best_models:
+  if model_path != best_model_path:
+    print(f"- {model_path}")
