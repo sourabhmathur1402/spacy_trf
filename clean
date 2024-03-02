@@ -1,0 +1,8 @@
+def clean_text(text):
+    # Remove all characters except letters, digits, and specific special characters
+    text = re.sub(r'\.(?=\s|$)', '', text)
+    # Replace consecutive whitespaces with a single space
+    text = re.sub(r'\s+', ' ', text)
+    # Strip leading and trailing whitespaces
+    text = text.strip().lower()
+    return text
