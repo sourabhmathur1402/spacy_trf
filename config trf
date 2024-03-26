@@ -24,10 +24,10 @@ vectors = {"@vectors":"spacy.Vectors.v1"}
 [components.transformer]
 factory = "transformer"
 
-[components.transformer.model]
-@architectures = "spacy-transformers.TransformerModel.v1"
-name = "roberta-base"
-
+[components.ner.model.tok2vec]
+@architectures = "spacy-transformers.TransformerListener.v1"
+upstream = "transformer"
+pooling = {"@layers": "reduce_mean.v1"}
 
 
 [components.ner]
@@ -45,12 +45,6 @@ hidden_width = 64
 maxout_pieces = 2
 use_upper = true
 nO = null
-
-[components.ner.model.tok2vec]
-@architectures = "spacy-transformers.TransformerListener.v1"
-upstream = "transformer"
-
-
 
 [components.tok2vec]
 factory = "tok2vec"
