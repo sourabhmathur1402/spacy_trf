@@ -1,3 +1,8 @@
+import spacy
+from spacy.tokens import DocBin
+
+nlp = spacy.blank("en")  # Use a blank English model for tokenization
+
 doc_bin = DocBin()  # Create a DocBin instance
 
 for text, annot in spacy_train_data:
