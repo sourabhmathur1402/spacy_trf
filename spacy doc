@@ -1,0 +1,11 @@
+doc_bin = DocBin()  # Create a DocBin instance
+
+for text, annot in spacy_train_data:
+    doc = nlp.make_doc(text)  # Create a Doc object from the text
+    ents = []
+    for start, end, label in annot['entities']:
+        span = doc.char_span(start, end, label=label, alignment_mode="contract")
+        if span is not None:
+            ents.append(span)
+    doc.ents = ents  # Set the entities for the Doc
+    doc_bin.add(doc)  # Add the Doc to the DocBin
