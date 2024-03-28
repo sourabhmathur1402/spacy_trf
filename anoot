@@ -1,0 +1,45 @@
+import pandas as pd
+
+# Assuming df is already defined and contains your DataFrame
+
+TRAIN_DATA = []
+classes = list(df.columns[1:])
+
+for index, row in df.iterrows():
+    text = row['Email Text'].lower() if pd.notna(row['Email Text']) else ""
+    entities_info = []
+    used_positions = set()
+
+    for label in classes:
+        # Ensure the row value for the label is not NaN before proceeding
+        if pd.isna(row[label]):
+            continue
+
+        for label_part in str(row[label]).lower().split('$'):
+            label_text = label_part.strip()
+            if not label_text:  # Skip empty strings
+                continue
+
+            start_idx = text.find(label_text)
+
+            while start_idx != -1:
+                end_idx = start_idx + len(label_text)
+                # Ensure match is not a partial word by checking surroundings
+                before_match = (start_idx == 0 or not text[start_idx - 1].isalnum())
+                after_match = (end_idx == len(text) or not text[end_idx].isalnum())
+
+                if before_match and after_match and not any(start_idx <= pos < end_idx for pos in used_positions):
+                    entities_info.append([start_idx, end_idx, label])
+                    used_positions.update(range(start_idx, end_idx))
+                    break  # Break to avoid annotating the same text as part of another entity
+                
+                # Update start_idx to search for the next occurrence
+                start_idx = text.find(label_text, start_idx + 1)
+
+    # Sort the entities_info list by the starting index of each entity
+    entities_info.sort(key=lambda x: x[0])
+
+    TRAIN_DATA.append([text, {"entities": entities_info}])
+
+
+TRAIN_DATA
